@@ -1,0 +1,422 @@
+repeat task.wait() until game:IsLoaded()
+local player = game.Players.LocalPlayer
+repeat task.wait() until player and player:FindFirstChild("PlayerGui")
+
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.Name = "FE_GUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999
+
+local toggleGuiBtn = Instance.new("TextButton", gui)
+toggleGuiBtn.Name = "ToggleGUI"
+toggleGuiBtn.Size = UDim2.new(0, 100, 0, 30)
+toggleGuiBtn.Position = UDim2.new(0.5, -50, 0, 5)
+toggleGuiBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+toggleGuiBtn.BorderSizePixel = 0
+toggleGuiBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
+toggleGuiBtn.Font = Enum.Font.GothamSemibold
+toggleGuiBtn.TextSize = 16
+toggleGuiBtn.Text = "Hide GUI"
+toggleGuiBtn.ZIndex = 2
+Instance.new("UICorner", toggleGuiBtn).CornerRadius = UDim.new(0, 8)
+local toggleStroke = Instance.new("UIStroke", toggleGuiBtn)
+toggleStroke.Color = Color3.fromRGB(255, 50, 50)
+toggleStroke.Thickness = 1.5
+toggleStroke.Transparency = 0.5
+
+local mainFrame = Instance.new("Frame", gui)
+mainFrame.Size = UDim2.new(0, 180, 0, 430)
+mainFrame.Position = UDim2.new(0.5, -90, 0.5, -215)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BorderSizePixel = 0
+mainFrame.ZIndex = 1
+mainFrame.Active = true
+mainFrame.Draggable = true
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
+local mainStroke = Instance.new("UIStroke", mainFrame)
+mainStroke.Color = Color3.fromRGB(255, 50, 50)
+mainStroke.Thickness = 2.5
+mainStroke.Transparency = 0.3
+
+local uiList = Instance.new("UIListLayout", mainFrame)
+uiList.Padding = UDim.new(0, 6)
+uiList.SortOrder = Enum.SortOrder.LayoutOrder
+uiList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+uiList.VerticalAlignment = Enum.VerticalAlignment.Top
+
+local function makeButton(name, text, order)
+	local button = Instance.new("TextButton", mainFrame)
+	button.Name = name
+	button.Size = UDim2.new(0.92, 0, 0, 30)
+	button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	button.BorderSizePixel = 0
+	button.TextColor3 = Color3.fromRGB(255, 50, 50)
+	button.Font = Enum.Font.GothamSemibold
+	button.TextSize = 14
+	button.Text = text
+	button.AutoButtonColor = false
+	button.LayoutOrder = order
+	Instance.new("UICorner", button).CornerRadius = UDim.new(0, 8)
+	local stroke = Instance.new("UIStroke", button)
+	stroke.Color = Color3.fromRGB(255, 50, 50)
+	stroke.Thickness = 1.5
+	stroke.Transparency = 0.4
+	button.MouseEnter:Connect(function() button.BackgroundColor3 = Color3.fromRGB(70, 0, 0) end)
+	button.MouseLeave:Connect(function() button.BackgroundColor3 = Color3.fromRGB(40, 40, 40) end)
+	return button
+end
+
+local buttons = {
+	{"SpeedButton", "Speed"},
+	{"JumpButton", "Jump"},
+	{"FlyButton", "Fly"},
+	{"UpButton", "Fly Up"},
+	{"DownButton", "Fly Down"},
+	{"NoclipButton", "Noclip"},
+	{"TPButton", "Teleport Forward"},
+	{"ESPButton", "ESP"},
+	{"InvisibleButton", "Invisible"},
+	{"TeleportPlayerButton", "Teleport To Player"},
+}
+
+local btnRefs = {}
+for i, b in ipairs(buttons) do
+	btnRefs[b[1]] = makeButton(b[1], b[2], i)
+end
+
+local function toggleVisible()
+	mainFrame.Visible = not mainFrame.Visible
+	toggleGuiBtn.Text = mainFrame.Visible and "Hide GUI" or "Show GUI"
+end
+toggleGuiBtn.MouseButton1Click:Connect(toggleVisible)
+
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local speedOn, jumpOn, flying, noclipOn, upPressed, downPressed, espOn, invisibleOn = false, false, false, false, false, false, false, false
+local flyVelocity, espFolder = nil, Instance.new("Folder", gui)
+espFolder.Name = "ESPFolder"
+
+local currentFlySpeed = 30
+local currentSpeed = 16
+local currentJump = 50
+
+local function createInputBox()
+	local box = Instance.new("TextBox", mainFrame)
+	box.Size = UDim2.new(0.92, 0, 0, 30)
+	box.Visible = false
+	box.ClearTextOnFocus = true
+	box.TextColor3 = Color3.fromRGB(255, 255, 255)
+	box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	box.BorderSizePixel = 0
+	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 8)
+	local stroke = Instance.new("UIStroke", box)
+	stroke.Color = Color3.fromRGB(255, 50, 50)
+	stroke.Thickness = 1.5
+	stroke.Transparency = 0.4
+	return box
+end
+
+local speedBox = createInputBox()
+local jumpBox = createInputBox()
+local flyBox = createInputBox()
+
+local function hideAllInputBoxes()
+	speedBox.Visible = false
+	jumpBox.Visible = false
+	flyBox.Visible = false
+end
+
+local function positionInputBox(box, button)
+	box.Position = UDim2.new(0.04, 0, 0, button.LayoutOrder * 36 + 6) -- below the button
+end
+
+btnRefs.SpeedButton.MouseButton1Click:Connect(function()
+	hideAllInputBoxes()
+	positionInputBox(speedBox, btnRefs.SpeedButton)
+	speedBox.Visible = true
+	speedBox:CaptureFocus()
+end)
+
+btnRefs.JumpButton.MouseButton1Click:Connect(function()
+	hideAllInputBoxes()
+	positionInputBox(jumpBox, btnRefs.JumpButton)
+	jumpBox.Visible = true
+	jumpBox:CaptureFocus()
+end)
+
+btnRefs.FlyButton.MouseButton1Click:Connect(function()
+	hideAllInputBoxes()
+	positionInputBox(flyBox, btnRefs.FlyButton)
+	flyBox.Visible = true
+	flyBox:CaptureFocus()
+end)
+
+speedBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local val = tonumber(speedBox.Text)
+		if val and val > 0 then
+			currentSpeed = val
+			local h = player.Character and player.Character:FindFirstChild("Humanoid")
+			if h then h.WalkSpeed = currentSpeed end
+		end
+		speedBox.Visible = false
+	end
+end)
+
+jumpBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local val = tonumber(jumpBox.Text)
+		if val and val > 0 then
+			currentJump = val
+			local h = player.Character and player.Character:FindFirstChild("Humanoid")
+			if h then h.JumpPower = currentJump end
+		end
+		jumpBox.Visible = false
+	end
+end)
+
+flyBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local val = tonumber(flyBox.Text)
+		if val and val > 0 then
+			currentFlySpeed = val
+		end
+		flyBox.Visible = false
+	end
+end)
+
+btnRefs.SpeedButton.MouseButton1Click:Connect(function()
+	speedOn = not speedOn
+	local h = player.Character and player.Character:FindFirstChild("Humanoid")
+	if speedOn and h then
+		h.WalkSpeed = currentSpeed
+	else
+		if h then h.WalkSpeed = 16 end
+	end
+end)
+
+btnRefs.JumpButton.MouseButton1Click:Connect(function()
+	jumpOn = not jumpOn
+	local h = player.Character and player.Character:FindFirstChild("Humanoid")
+	if jumpOn and h then
+		h.JumpPower = currentJump
+	else
+		if h then h.JumpPower = 50 end
+	end
+end)
+
+btnRefs.FlyButton.MouseButton1Click:Connect(function()
+	flying = not flying
+	if flying then
+		local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			flyVelocity = Instance.new("BodyVelocity")
+			flyVelocity.Velocity = Vector3.new()
+			flyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+			flyVelocity.P = 1e4
+			flyVelocity.Parent = hrp
+		end
+	else
+		if flyVelocity then
+			flyVelocity:Destroy()
+			flyVelocity = nil
+		end
+	end
+end)
+
+btnRefs.UpButton.MouseButton1Down:Connect(function() upPressed = true end)
+btnRefs.UpButton.MouseButton1Up:Connect(function() upPressed = false end)
+btnRefs.UpButton.MouseLeave:Connect(function() upPressed = false end)
+
+btnRefs.DownButton.MouseButton1Down:Connect(function() downPressed = true end)
+btnRefs.DownButton.MouseButton1Up:Connect(function() downPressed = false end)
+btnRefs.DownButton.MouseLeave:Connect(function() downPressed = false end)
+
+RunService.Heartbeat:Connect(function()
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	local hum = char and char:FindFirstChild("Humanoid")
+	if flying and hrp and hum then
+		if upPressed then hrp.CFrame = hrp.CFrame + Vector3.new(0, 3, 0) end
+		if downPressed then hrp.CFrame = hrp.CFrame - Vector3.new(0, 3, 0) end
+		if flyVelocity then flyVelocity.Velocity = hum.MoveDirection * currentFlySpeed end
+	end
+	if noclipOn and char then
+		for _, p in ipairs(char:GetDescendants()) do
+			if p:IsA("BasePart") then p.CanCollide = false end
+		end
+	end
+end)
+
+btnRefs.NoclipButton.MouseButton1Click:Connect(function()
+	noclipOn = not noclipOn
+end)
+
+btnRefs.TPButton.MouseButton1Click:Connect(function()
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * 75
+	end
+end)
+
+local function createESP(char, label)
+	if not char:FindFirstChild("Head") then return end
+	local b = Instance.new("BillboardGui", espFolder)
+	b.Adornee = char.Head
+	b.Size = UDim2.new(0, 180, 0, 30)
+	b.AlwaysOnTop = true
+	b.Name = char.Name .. "_ESP"
+	local txt = Instance.new("TextLabel", b)
+	txt.Size = UDim2.new(1, 0, 1, 0)
+	txt.BackgroundTransparency = 1
+	txt.TextColor3 = Color3.new(1, 0, 0)
+	txt.TextScaled = true
+	txt.Text = label
+end
+
+local function refreshESP()
+	espFolder:ClearAllChildren()
+	for _, plr in ipairs(game.Players:GetPlayers()) do
+		if plr ~= player and plr.Character then
+			local h = plr.Character:FindFirstChild("Humanoid")
+			local hp = h and math.floor(h.Health) or 0
+			createESP(plr.Character, string.format("%s | %s | %d HP", plr.Name, tostring(plr.Team), hp))
+		end
+	end
+	for _, npc in ipairs(workspace:GetDescendants()) do
+		if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("Head") and not game.Players:GetPlayerFromCharacter(npc) then
+			createESP(npc, string.format("NPC | %d HP", math.floor(npc.Humanoid.Health)))
+		end
+	end
+end
+
+btnRefs.ESPButton.MouseButton1Click:Connect(function()
+	espOn = not espOn
+	if espOn then
+		refreshESP()
+	else
+		espFolder:ClearAllChildren()
+	end
+end)
+
+game.Players.PlayerAdded:Connect(function(plr)
+	if espOn then
+		plr.CharacterAdded:Connect(function()
+			task.wait(1)
+			refreshESP()
+		end)
+		plr.CharacterRemoving:Connect(function()
+			task.wait(1)
+			refreshESP()
+		end)
+	end
+end)
+
+for _, plr in ipairs(game.Players:GetPlayers()) do
+	if espOn then
+		plr.CharacterAdded:Connect(function()
+			task.wait(1)
+			refreshESP()
+		end)
+		plr.CharacterRemoving:Connect(function()
+			task.wait(1)
+			refreshESP()
+		end)
+	end
+end
+
+btnRefs.InvisibleButton.MouseButton1Click:Connect(function()
+	invisibleOn = not invisibleOn
+	local char = player.Character
+	if char then
+		for _, obj in ipairs(char:GetDescendants()) do
+			if obj:IsA("BasePart") then
+				obj.Transparency = invisibleOn and 1 or 0
+				obj.CanCollide = not invisibleOn
+			elseif obj:IsA("Decal") then
+				obj.Transparency = invisibleOn and 1 or 0
+			elseif obj:IsA("Accessory") then
+				local handle = obj:FindFirstChildWhichIsA("BasePart")
+				if handle then
+					handle.Transparency = invisibleOn and 1 or 0
+					handle.CanCollide = not invisibleOn
+					for _, part in ipairs(handle:GetDescendants()) do
+						if part:IsA("Decal") then
+							part.Transparency = invisibleOn and 1 or 0
+						end
+					end
+				end
+			end
+		end
+	end
+end)
+
+local tpBox = Instance.new("TextBox", mainFrame)
+tpBox.Size = UDim2.new(0.92, 0, 0, 30)
+tpBox.PlaceholderText = "Type first 3+ letters"
+tpBox.Text = ""
+tpBox.ClearTextOnFocus = false
+tpBox.Visible = false
+tpBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+tpBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+tpBox.BorderSizePixel = 0
+Instance.new("UICorner", tpBox).CornerRadius = UDim.new(0, 8)
+local tpStroke = Instance.new("UIStroke", tpBox)
+tpStroke.Color = Color3.fromRGB(255, 50, 50)
+tpStroke.Thickness = 1.5
+tpStroke.Transparency = 0.4
+
+local errorLabel = Instance.new("TextLabel", mainFrame)
+errorLabel.Size = UDim2.new(0.92, 0, 0, 20)
+errorLabel.Position = UDim2.new(0, 0, 1, -20)
+errorLabel.BackgroundTransparency = 1
+errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+errorLabel.TextScaled = true
+errorLabel.Text = ""
+errorLabel.Visible = false
+
+btnRefs.TeleportPlayerButton.MouseButton1Click:Connect(function()
+	hideAllInputBoxes()
+	positionInputBox(tpBox, btnRefs.TeleportPlayerButton)
+	tpBox.Visible = true
+	tpBox:CaptureFocus()
+end)
+
+tpBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local namePart = tpBox.Text:lower()
+		tpBox.Visible = false
+		local found = false
+		for _, p in ipairs(game.Players:GetPlayers()) do
+			if p ~= player then
+				local uname = p.Name:lower()
+				local dname = p.DisplayName:lower()
+				if uname:sub(1, #namePart) == namePart or dname:sub(1, #namePart) == namePart then
+					local targetHRP = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+					local myHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+					if targetHRP and myHRP then
+						local offset = -targetHRP.CFrame.LookVector.Unit * 5
+						myHRP.CFrame = targetHRP.CFrame + offset
+						found = true
+						break
+					end
+				end
+			end
+		end
+		if not found then
+			errorLabel.Text = "Player not found"
+			errorLabel.Visible = true
+			task.delay(2, function() errorLabel.Visible = false end)
+		end
+	end
+end)
+
+player.CharacterAdded:Connect(function()
+	flying = false
+	if flyVelocity then
+		flyVelocity:Destroy()
+		flyVelocity = nil
+	end
+end)
